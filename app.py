@@ -2,11 +2,23 @@ from flask import Flask,request,jsonify
 from flask_sqlalchemy import SQLAlchemy
 from flask_marshmallow import Marshmallow
 import os
+import logging
+from logging.handlers import RotatingFileHandler
 
 #init app
 app = Flask(__name__)
 basedir = os.path.abspath(os.path.dirname(__file__))
+if not os.path.exists('logs'):
+    os.mkdir('logs')
+file_handler = RotatingFileHandler('logs/rest_api.log', maxBytes=10240,
+                                   backupCount=10)
+file_handler.setFormatter(logging.Formatter(
+    '%(asctime)s %(levelname)s: %(message)s [in %(lineno)d]'))
+file_handler.setLevel(logging.DEBUG)
+app.logger.addHandler(file_handler)
 
+app.logger.setLevel(logging.INFO)
+app.logger.info('rest_api in use')
 #database
 app.config['SQLALCHEMY_DATABASE_URI']= 'sqlite:///'+ os.path.join(basedir,'db.sqlite')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
@@ -42,53 +54,71 @@ products_schema = ProductSchema(many=True)
 
 @app.route('/prod', methods=['POST'])
 def add_product():
-    name = request.json['name']
-    description = request.json['description']
-    price = request.json['price']
-    qty = request.json['qty']
+    try:
+        name = request.json['name']
+        name = request.json['name']
+        description = request.json['description']
+        price = request.json['price']
+        qty = request.json['qty']
 
-    new_product = Product(name, description, price, qty)
+        new_product = Product(name, description, price, qty)
 
-    db.session.add(new_product)
-    db.session.commit()
+        db.session.add(new_product)
+        db.session.commit()
+    except Exception as error:
+        app.logger.error(error)
 
     return product_schema.jsonify(new_product)
 
 @app.route('/prod', methods=['GET'])
 def get_products():
-    products = Product.query.all()
-    result = products_schema.dump(products)
+    try:
+        products = Product.query.all()
+        result = products_schema.dump(products)
+    except Exception as error:
+        app.logger.error(error)
+
     return jsonify(result)
 
 @app.route('/prod/<id>', methods=['GET'])
 def get_one_product(id):
-    product = Product.query.get(id)
+    try:
+        product = Product.query.get(id)
+    except Exception as error:
+        app.logger.error(error)
+
     return product_schema.jsonify(product)
 
 @app.route('/prod/<id>', methods=['PUT'])
 def update_product(id):
-    product = Product.query.get(id)
+    try:
+        product = Product.query.get(id)
 
-    name = request.json['name']
-    description = request.json['description']
-    price = request.json['price']
-    qty = request.json['qty']
+        name = request.json['name']
+        description = request.json['description']
+        price = request.json['price']
+        qty = request.json['qty']
 
-    product.name = name
-    product.description = description
-    product.price = price
-    product.qty = qty
+        product.name = name
+        product.description = description
+        product.price = price
+        product.qty = qty
 
-    db.session.commit()
+        db.session.commit()
+    except Exception as error:
+        app.logger.error(error)
 
     return product_schema.jsonify(product)
 
 @app.route('/prod/<id>', methods=['DELETE'])
 def delete_product(id):
-    product = Product.query.get(id)
+    try:
+        product = Product.query.get(id)
 
-    db.session.delete(product)
-    db.session.commit()
+        db.session.delete(product)
+        db.session.commit()
+    except Exception as error:
+        app.logger.error(error)
 
     return product_schema.jsonify(product)
 
